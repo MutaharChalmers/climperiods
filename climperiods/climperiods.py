@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import numpy as np
 import pandas as pd
 
 def clims(year_from, year_to) -> pd.DataFrame:
@@ -19,13 +20,16 @@ def clims(year_from, year_to) -> pd.DataFrame:
             Climate averaging periods.
     """
 
-    periods = {}
-    for year in range(year_from, year_to+1):
-        # Quotient and remainder for divisor=5
-        a, b = divmod(year-1, 5)
-        # Update when nominal range is not in the future, otherwise project
-        if a*5+15 <= year_to:
-            current_period = (a*5-14, a*5+15)
-        periods[year] = current_period
-    return pd.DataFrame(periods, index=['year_from','year_to']
-                       ).T.rename_axis('year')
+     # All years this function is likely to be run for (can be extended)
+    all_years = np.arange(1800, 2101, dtype=int)
+
+    # Select year range required and integer divide by 5 to chunk
+    years = pd.Index(np.arange(year_from, year_to+1, dtype=int), name='years')
+    chunks = (all_years-1)//5
+
+    # Calculate 30-year windows then filter out future years and forward fill
+    periods_all = pd.DataFrame({'year_from': chunks*5-14,
+                                'year_to': chunks*5+15}, index=all_years)
+    periods = periods_all.where(periods_all['year_to']<=year_to
+                               ).ffill().astype(int).reindex(years)
+    return periods
